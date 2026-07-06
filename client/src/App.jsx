@@ -8,6 +8,8 @@ import PostDetailPage from './pages/PostDetailPage';
 import CreatePostPage from './pages/CreatePostPage';
 import EditPostPage from './pages/EditPostPage';
 import UserProfilePage from './pages/UserProfilePage';
+import SearchPage from './pages/SearchPage';
+import GitHubCallbackPage from './pages/GitHubCallbackPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -31,6 +33,8 @@ function AppRoutes() {
           <Route path="/posts/:id" element={<PostDetailPage />} />
           <Route path="/posts/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
           <Route path="/users/:id" element={<UserProfilePage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/github-callback" element={<GitHubCallbackPage />} />
         </Routes>
       </main>
     </div>

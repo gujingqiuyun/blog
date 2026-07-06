@@ -9,6 +9,8 @@ import Modal from '../components/Modal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getReadingStats } from '../utils/reading';
+import SidePanels from '../components/SidePanels';
+import { extractTOC } from '../utils/toc';
 
 export default function PostDetailPage() {
   const { id } = useParams();
@@ -113,7 +115,22 @@ export default function PostDetailPage() {
         </div>
 
         <div className="markdown-content text-base mb-10">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ children, ...props }) => {
+                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
+                return <h1 id={id} {...props}>{children}</h1>;
+              },
+              h2: ({ children, ...props }) => {
+                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
+                return <h2 id={id} {...props}>{children}</h2>;
+              },
+              h3: ({ children, ...props }) => {
+                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
+                return <h3 id={id} {...props}>{children}</h3>;
+              },
+            }}>
             {post.content}
           </ReactMarkdown>
         </div>
@@ -127,6 +144,9 @@ export default function PostDetailPage() {
 
       {/* Comments */}
       <CommentSection postId={post.id} />
+
+      {/* Side panels */}
+      <SidePanels authorId={post.user_id} content={post.content} currentPostId={post.id} />
 
       <Modal
         open={deleteModal}

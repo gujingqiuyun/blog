@@ -29,6 +29,70 @@ router.get('/', (req, res) => {
   });
 });
 
+// GET /api/posts/search?q= — full-text search (must be before /:id)
+router.get('/search', (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json({ posts: [] });
+
+  // Escape FTS5 special chars and build a prefix query
+  const safe = q.replace(/['"*()]/g, '').split(/\s+/).filter(Boolean).map(w => `"${w}"*`).join(' AND ');
+  if (!safe) return res.json({ posts: [] });
+
+  try {
+    const posts = db.prepare(`
+      SELECT p.*, u.username, u.avatar,
+        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+        COALESCE(p.views, 0) as view_count,
+        snippet(posts_fts, 1, '<mark>', '</mark>', '...', 48) as snippet
+      FROM posts_fts fts
+      JOIN posts p ON fts.rowid = p.id
+      JOIN users u ON p.user_id = u.id
+      WHERE posts_fts MATCH ?
+      ORDER BY rank
+      LIMIT 20
+    `).all(safe);
+    if (posts.length > 0) {
+      return res.json({ posts });
+    }
+    // FTS5 returned 0 results — fall through to LIKE
+  } catch (e) {
+    // FTS5 threw — fall through to LIKE
+  }
+
+  // LIKE fallback — works for CJK and partial matches
+  try {
+    const likeQ = `%${q.replace(/[%_]/g, '')}%`;
+    const posts = db.prepare(`
+      SELECT p.*, u.username, u.avatar,
+        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+        COALESCE(p.views, 0) as view_count,
+        NULL as snippet
+      FROM posts p JOIN users u ON p.user_id = u.id
+      WHERE p.title LIKE ? OR p.content LIKE ? OR p.summary LIKE ?
+      ORDER BY p.created_at DESC
+      LIMIT 20
+    `).all(likeQ, likeQ, likeQ);
+    // Generate snippet around the keyword for LIKE results
+    const postsWithSnippet = posts.map(p => {
+      const idx = p.content.indexOf(q);
+      if (idx >= 0) {
+        const start = Math.max(0, idx - 30);
+        const end = Math.min(p.content.length, idx + q.length + 30);
+        const before = (start > 0 ? '...' : '') + p.content.slice(start, idx);
+        const after = p.content.slice(idx + q.length, end) + (end < p.content.length ? '...' : '');
+        const clean = (text) => text.replace(/[#*>`\-\[\]()!]/g, ' ').replace(/\s+/g, ' ').trim();
+        p.snippet = clean(before) + ' <mark>' + q + '</mark> ' + clean(after);
+      }
+      return p;
+    });
+    res.json({ posts: postsWithSnippet });
+  } catch (e2) {
+    res.json({ posts: [], error: '搜索语法错误' });
+  }
+});
+
 // GET /api/posts/:id — single post with like status
 router.get('/:id', optionalAuth, (req, res) => {
   const post = db.prepare(`

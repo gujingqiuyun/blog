@@ -70,5 +70,29 @@ db.exec(`
 
 try { db.exec('ALTER TABLE posts ADD COLUMN views INTEGER DEFAULT 0'); } catch (e) {}
 try { db.exec('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id)'); } catch (e) {}
+try { db.exec('ALTER TABLE users ADD COLUMN github_id TEXT UNIQUE'); } catch (e) {}
+
+// Full-text search
+db.exec(`
+  CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(title, content, summary, content=posts, content_rowid=id);
+  CREATE TRIGGER IF NOT EXISTS posts_fts_ai AFTER INSERT ON posts BEGIN
+    INSERT INTO posts_fts(rowid, title, content, summary) VALUES (new.id, new.title, new.content, new.summary);
+  END;
+  CREATE TRIGGER IF NOT EXISTS posts_fts_ad AFTER DELETE ON posts BEGIN
+    INSERT INTO posts_fts(posts_fts, rowid, title, content, summary) VALUES('delete', old.id, old.title, old.content, old.summary);
+  END;
+  CREATE TRIGGER IF NOT EXISTS posts_fts_au AFTER UPDATE ON posts BEGIN
+    INSERT INTO posts_fts(posts_fts, rowid, title, content, summary) VALUES('delete', old.id, old.title, old.content, old.summary);
+    INSERT INTO posts_fts(rowid, title, content, summary) VALUES (new.id, new.title, new.content, new.summary);
+  END;
+`);
+
+// Populate FTS with existing data
+try {
+  const count = db.prepare('SELECT COUNT(*) as c FROM posts_fts').get().c;
+  if (count === 0) {
+    db.exec(`INSERT INTO posts_fts(rowid, title, content, summary) SELECT id, title, content, summary FROM posts`);
+  }
+} catch (e) {}
 
 module.exports = db;

@@ -27,3 +27,5 @@ body {
 .markdown-content th, .markdown-content td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
 .markdown-content th { background: #f9fafb; font-weight: 600; color: #374151; }
 .markdown-content strong { color: #111827; }
+
+mark { background: #e5e7eb; color: #111827; padding: 0 0.125rem; border-radius: 0.125rem; font-weight: 500; }
