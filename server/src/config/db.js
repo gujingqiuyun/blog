@@ -56,4 +56,19 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS comment_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    comment_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, comment_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+  );
+`);
+
+try { db.exec('ALTER TABLE posts ADD COLUMN views INTEGER DEFAULT 0'); } catch (e) {}
+try { db.exec('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id)'); } catch (e) {}
+
 module.exports = db;

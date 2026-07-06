@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import PostDetailPage from './pages/PostDetailPage';
 import CreatePostPage from './pages/CreatePostPage';
 import EditPostPage from './pages/EditPostPage';
+import UserProfilePage from './pages/UserProfilePage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -19,7 +20,7 @@ function ProtectedRoute({ children }) {
 
 function AppRoutes() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Navbar />
       <main>
         <Routes>
@@ -29,6 +30,7 @@ function AppRoutes() {
           <Route path="/posts/new" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
           <Route path="/posts/:id" element={<PostDetailPage />} />
           <Route path="/posts/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
+          <Route path="/users/:id" element={<UserProfilePage />} />
         </Routes>
       </main>
     </div>

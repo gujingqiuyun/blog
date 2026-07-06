@@ -13,7 +13,8 @@ router.get('/', (req, res) => {
   const posts = db.prepare(`
     SELECT p.*, u.username, u.avatar,
       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
-      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+      COALESCE(p.views, 0) as view_count
     FROM posts p
     JOIN users u ON p.user_id = u.id
     ORDER BY p.created_at DESC
@@ -33,7 +34,8 @@ router.get('/:id', optionalAuth, (req, res) => {
   const post = db.prepare(`
     SELECT p.*, u.username, u.avatar,
       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
-      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+      COALESCE(p.views, 0) as view_count
     FROM posts p
     JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -104,21 +106,49 @@ router.delete('/:id', auth, (req, res) => {
 });
 
 // GET /api/posts/:id/comments
-router.get('/:id/comments', (req, res) => {
+router.get('/:id/comments', optionalAuth, (req, res) => {
   const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
   if (!post) return res.status(404).json({ error: '文章不存在' });
 
   const comments = db.prepare(`
-    SELECT c.*, u.username, u.avatar
+    SELECT c.*, u.username, u.avatar,
+      (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
+      (SELECT COUNT(*) FROM comments AS replies WHERE replies.parent_id = c.id) as reply_count
     FROM comments c JOIN users u ON c.user_id = u.id
-    WHERE c.post_id = ? ORDER BY c.created_at ASC
+    WHERE c.post_id = ? AND c.parent_id IS NULL
+    ORDER BY c.created_at ASC
   `).all(req.params.id);
-  res.json({ comments });
+
+  // Fetch replies & like status
+  const uid = req.user?.id;
+  const result = comments.map(c => {
+    const replies = db.prepare(`
+      SELECT c2.*, u2.username, u2.avatar,
+        (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c2.id) as like_count
+      FROM comments c2 JOIN users u2 ON c2.user_id = u2.id
+      WHERE c2.parent_id = ? ORDER BY c2.created_at ASC
+    `).all(c.id);
+
+    const liked = uid ? !!db.prepare(
+      'SELECT id FROM comment_likes WHERE user_id = ? AND comment_id = ?'
+    ).get(uid, c.id) : false;
+
+    const repliesWithLikes = replies.map(r => ({
+      ...r,
+      liked: uid ? !!db.prepare(
+        'SELECT id FROM comment_likes WHERE user_id = ? AND comment_id = ?'
+      ).get(uid, r.id) : false
+    }));
+
+    return { ...c, liked, replies: repliesWithLikes };
+  });
+
+  res.json({ comments: result });
 });
 
 // POST /api/posts/:id/comments
 router.post('/:id/comments', auth, (req, res) => {
-  const { content } = req.body;
+  const { content, parent_id } = req.body;
   if (!content) {
     return res.status(400).json({ error: '评论内容不能为空' });
   }
@@ -126,9 +156,14 @@ router.post('/:id/comments', auth, (req, res) => {
   const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
   if (!post) return res.status(404).json({ error: '文章不存在' });
 
+  if (parent_id) {
+    const parent = db.prepare('SELECT id FROM comments WHERE id = ? AND post_id = ?').get(parent_id, req.params.id);
+    if (!parent) return res.status(400).json({ error: '被回复的评论不存在' });
+  }
+
   const result = db.prepare(
-    'INSERT INTO comments (content, user_id, post_id) VALUES (?, ?, ?)'
-  ).run(content, req.user.id, req.params.id);
+    'INSERT INTO comments (content, user_id, post_id, parent_id) VALUES (?, ?, ?, ?)'
+  ).run(content, req.user.id, req.params.id, parent_id || null);
 
   const comment = db.prepare(`
     SELECT c.*, u.username, u.avatar
@@ -137,6 +172,27 @@ router.post('/:id/comments', auth, (req, res) => {
   `).get(result.lastInsertRowid);
 
   res.status(201).json({ comment });
+});
+
+// POST /api/posts/:id/comments/:commentId/like — toggle comment like
+router.post('/:id/comments/:commentId/like', auth, (req, res) => {
+  const comment = db.prepare(
+    'SELECT id FROM comments WHERE id = ? AND post_id = ?'
+  ).get(req.params.commentId, req.params.id);
+
+  if (!comment) return res.status(404).json({ error: '评论不存在' });
+
+  const existing = db.prepare(
+    'SELECT id FROM comment_likes WHERE user_id = ? AND comment_id = ?'
+  ).get(req.user.id, req.params.commentId);
+
+  if (existing) {
+    db.prepare('DELETE FROM comment_likes WHERE id = ?').run(existing.id);
+    res.json({ liked: false });
+  } else {
+    db.prepare('INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)').run(req.user.id, req.params.commentId);
+    res.json({ liked: true });
+  }
 });
 
 // DELETE /api/posts/:id/comments/:commentId
@@ -152,6 +208,14 @@ router.delete('/:id/comments/:commentId', auth, (req, res) => {
 
   db.prepare('DELETE FROM comments WHERE id = ?').run(req.params.commentId);
   res.json({ message: '删除成功' });
+});
+
+// POST /api/posts/:id/view — record a view
+router.post('/:id/view', (req, res) => {
+  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: '文章不存在' });
+  db.prepare('UPDATE posts SET views = COALESCE(views, 0) + 1 WHERE id = ?').run(post.id);
+  res.json({ ok: true });
 });
 
 // POST /api/posts/:id/like — toggle like
