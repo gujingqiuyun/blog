@@ -20,6 +20,7 @@ db.exec(`
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     avatar TEXT DEFAULT '',
+    github_id TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -70,7 +71,6 @@ db.exec(`
 
 try { db.exec('ALTER TABLE posts ADD COLUMN views INTEGER DEFAULT 0'); } catch (e) {}
 try { db.exec('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id)'); } catch (e) {}
-try { db.exec('ALTER TABLE users ADD COLUMN github_id TEXT UNIQUE'); } catch (e) {}
 
 // Full-text search
 db.exec(`
