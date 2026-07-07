@@ -7,6 +7,8 @@ const fs = require('fs');
 const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
 const userRoutes = require('./routes/users');
+const annotationRoutes = require('./routes/annotations');
+const columnRoutes = require('./routes/columns');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +29,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/annotations', annotationRoutes);
+app.use('/api/columns', columnRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

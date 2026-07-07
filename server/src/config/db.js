@@ -69,6 +69,52 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS annotations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    post_id INTEGER NOT NULL,
+    selected_text TEXT NOT NULL,
+    start_offset INTEGER NOT NULL DEFAULT 0,
+    type TEXT NOT NULL DEFAULT 'highlight',
+    color TEXT NOT NULL DEFAULT '#fef08a',
+    style TEXT DEFAULT 'solid',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS stars (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    post_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, post_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS columns_ (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    parent_id INTEGER,
+    sort_order INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (parent_id) REFERENCES columns_(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS post_columns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    column_id INTEGER NOT NULL,
+    UNIQUE(post_id, column_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (column_id) REFERENCES columns_(id) ON DELETE CASCADE
+  );
+`);
+
 try { db.exec('ALTER TABLE posts ADD COLUMN views INTEGER DEFAULT 0'); } catch (e) {}
 try { db.exec('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id)'); } catch (e) {}
 

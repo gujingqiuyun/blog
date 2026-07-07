@@ -66,7 +66,7 @@ export default function SearchPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <Link to="/" className="text-sm text-gray-300 hover:text-gray-600 mb-6 inline-block transition-colors">
-        ← 返回首页
+        ← 返回
       </Link>
       <h1 className="text-xl font-bold text-gray-900 mb-1 tracking-tight">
         {q ? `搜索「${q}」` : '搜索'}

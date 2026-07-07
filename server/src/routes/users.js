@@ -105,6 +105,20 @@ router.get('/', (req, res) => {
   res.json({ users });
 });
 
+// GET /api/users/:id/stars — user's starred posts
+router.get('/:id/stars', (req, res) => {
+  const posts = db.prepare(`
+    SELECT p.*, u.username, u.avatar,
+      (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+      COALESCE(p.views, 0) as view_count
+    FROM stars s JOIN posts p ON s.post_id = p.id
+    JOIN users u ON p.user_id = u.id
+    WHERE s.user_id = ? ORDER BY s.created_at DESC
+  `).all(req.params.id);
+  res.json({ posts });
+});
+
 // GET /api/users/:id — user profile + their posts
 router.get('/:id', (req, res) => {
   const user = db.prepare(`

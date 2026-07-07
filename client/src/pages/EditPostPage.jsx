@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import api from '../api/client';
+import MarkdownToolbar from '../components/MarkdownToolbar';
+import { mdComponents } from '../utils/markdown';
 
 export default function EditPostPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const textareaRef = useRef(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
@@ -59,18 +63,19 @@ export default function EditPostPage() {
 
         {/* Split-pane editor */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="md:flex md:flex-col" style={{ height: '540px' }}>
             <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-2">编辑</p>
-            <textarea placeholder="文章内容... 支持 Markdown 语法" value={content}
+            <MarkdownToolbar textareaRef={textareaRef} content={content} setContent={setContent} />
+            <textarea ref={textareaRef} placeholder="文章内容... 支持 Markdown 语法" value={content}
               onChange={e => setContent(e.target.value)} required rows="20"
-              className="w-full px-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none leading-relaxed placeholder:text-gray-300 font-mono text-sm md:h-[500px]"
+              className="w-full flex-1 px-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none leading-relaxed placeholder:text-gray-300 font-mono text-sm"
             />
           </div>
-          <div>
+          <div className="md:flex md:flex-col" style={{ height: '540px' }}>
             <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-2">预览</p>
-            <div className="preview-pane markdown-content md:h-[500px] overflow-y-auto p-4 border border-gray-200 rounded-md bg-white">
+            <div id="edit-preview-pane" className="preview-pane markdown-content flex-1 overflow-y-auto p-4 border border-gray-200 rounded-md bg-white">
               {content ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={mdComponents}>{content}</ReactMarkdown>
               ) : (
                 <p className="text-gray-300 text-sm">在左侧输入内容，这里实时预览...</p>
               )}

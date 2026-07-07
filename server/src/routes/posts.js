@@ -282,6 +282,24 @@ router.post('/:id/view', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/posts/:id/star — toggle star
+router.post('/:id/star', auth, (req, res) => {
+  const existing = db.prepare('SELECT id FROM stars WHERE user_id = ? AND post_id = ?').get(req.user.id, req.params.id);
+  if (existing) {
+    db.prepare('DELETE FROM stars WHERE id = ?').run(existing.id);
+    res.json({ starred: false });
+  } else {
+    db.prepare('INSERT INTO stars (user_id, post_id) VALUES (?, ?)').run(req.user.id, req.params.id);
+    res.json({ starred: true });
+  }
+});
+
+// GET /api/posts/:id/star — check star status
+router.get('/:id/star', auth, (req, res) => {
+  const s = db.prepare('SELECT id FROM stars WHERE user_id = ? AND post_id = ?').get(req.user.id, req.params.id);
+  res.json({ starred: !!s });
+});
+
 // POST /api/posts/:id/like — toggle like
 router.post('/:id/like', auth, (req, res) => {
   const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);

@@ -20,13 +20,14 @@ const StatsIcons = {
   ),
 };
 
-export default function PostCard({ post, showAuthor = true }) {
+export default function PostCard({ post, showAuthor = true, from }) {
   const views = post.view_count ?? 0;
+  const linkTo = from ? `/posts/${post.id}?from=${from}` : `/posts/${post.id}`;
 
   return (
     <article className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors flex flex-col">
       <div className="flex-1">
-        <Link to={`/posts/${post.id}`}>
+        <Link to={linkTo}>
           <h2 className="text-base font-semibold text-gray-900 mb-1.5 hover:text-gray-600 transition-colors line-clamp-2 leading-snug">
             {post.title}
           </h2>

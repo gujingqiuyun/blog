@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import CommentSection from '../components/CommentSection';
@@ -8,17 +8,23 @@ import Avatar from '../components/Avatar';
 import Modal from '../components/Modal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { getReadingStats } from '../utils/reading';
 import SidePanels from '../components/SidePanels';
-import { extractTOC } from '../utils/toc';
+import { mdComponents } from '../utils/markdown';
 
 export default function PostDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get('from');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [starred, setStarred] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const lastScrollY = useRef(0);
   const lastViewed = useRef(null);
 
   useEffect(() => {
@@ -32,7 +38,29 @@ export default function PostDetailPage() {
       lastViewed.current = id;
       api.post(`/posts/${id}/view`).catch(() => {});
     }
-  }, [id]);
+
+    if (user) {
+      api.get(`/posts/${id}/star`).then(r => setStarred(r.data.starred)).catch(() => {});
+    }
+  }, [id, user]);
+
+  // Scroll-to-top button visibility
+  useEffect(() => {
+    const handler = () => {
+      const y = window.scrollY;
+      if (y < lastScrollY.current && y > 300) setShowScrollTop(true);
+      else setShowScrollTop(false);
+      lastScrollY.current = y;
+    };
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
+
+  const toggleStar = async () => {
+    if (!user) return navigate('/login');
+    const r = await api.post(`/posts/${id}/star`);
+    setStarred(r.data.starred);
+  };
 
   const handleDelete = async () => {
     setDeleteModal(false);
@@ -56,11 +84,11 @@ export default function PostDetailPage() {
   const stats = post ? getReadingStats(post.content) : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-10">
       {/* Back nav */}
-      <Link to="/" className="text-sm text-gray-300 hover:text-gray-600 mb-8 inline-block transition-colors">
-        ← 返回首页
-      </Link>
+      <button onClick={() => navigate(from === 'profile' && user ? `/users/${user.id}` : '/')} className="text-sm text-gray-300 hover:text-gray-600 mb-8 inline-block transition-colors">
+        ← 返回
+      </button>
 
       {/* Article */}
       <article>
@@ -115,22 +143,7 @@ export default function PostDetailPage() {
         </div>
 
         <div className="markdown-content text-base mb-10">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: ({ children, ...props }) => {
-                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
-                return <h1 id={id} {...props}>{children}</h1>;
-              },
-              h2: ({ children, ...props }) => {
-                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
-                return <h2 id={id} {...props}>{children}</h2>;
-              },
-              h3: ({ children, ...props }) => {
-                const id = String(children).toLowerCase().replace(/[\s]+/g, '-').replace(/[^\w一-鿿\-]/g, '').replace(/-+$/g, '');
-                return <h3 id={id} {...props}>{children}</h3>;
-              },
-            }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={mdComponents}>
             {post.content}
           </ReactMarkdown>
         </div>
@@ -139,6 +152,9 @@ export default function PostDetailPage() {
       {/* Actions bar */}
       <div className="flex items-center gap-4 py-5 border-t border-b border-gray-200 mb-10">
         <LikeButton postId={post.id} initialLiked={post.liked} initialCount={post.like_count} />
+        <button onClick={toggleStar} title={starred ? '取消收藏' : '收藏'} className={`text-sm transition-colors ${starred ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500'}`}>
+          {starred ? '★' : '☆'}
+        </button>
         <span className="text-sm text-gray-300">{post.comment_count} 条评论</span>
       </div>
 
@@ -147,6 +163,14 @@ export default function PostDetailPage() {
 
       {/* Side panels */}
       <SidePanels authorId={post.user_id} content={post.content} currentPostId={post.id} />
+
+      {/* Scroll to top */}
+      {showScrollTop && (
+        <button onClick={() => window.scrollTo({ top: 0 })}
+          className="fixed top-[70px] left-1/2 -translate-x-1/2 z-40 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-all">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+      )}
 
       <Modal
         open={deleteModal}
