@@ -6,11 +6,12 @@ import rehypeRaw from 'rehype-raw';
 import api from '../api/client';
 import MarkdownToolbar from '../components/MarkdownToolbar';
 import { mdComponents } from '../utils/markdown';
+import { useHistory } from '../utils/useHistory';
 
 export default function CreatePostPage() {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  const [content, setContent] = useState('');
+  const [content, setContent] = useHistory('');
   const textareaRef = useRef(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);

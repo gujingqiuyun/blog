@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 const MARK_COLORS = ['#fef08a', '#bfdbfe', '#bbf7d0', '#fecaca', '#ddd6fe', '#fed7aa', '#d1d5db'];
+const TEXT_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#ca8a04', '#9333ea', '#ea580c', '#111827'];
 
 const tools = [
   { label: 'B', title: '加粗', prefix: '**', suffix: '**', sample: '加粗文字' },
@@ -17,7 +18,9 @@ const tools = [
 
 export default function MarkdownToolbar({ textareaRef, content, setContent }) {
   const [markColor, setMarkColor] = useState('#fef08a');
-  const [showColors, setShowColors] = useState(false);
+  const [textColor, setTextColor] = useState('#dc2626');
+  const [showMarkColors, setShowMarkColors] = useState(false);
+  const [showTextColors, setShowTextColors] = useState(false);
 
   const insert = (prefix, suffix, sample) => {
     const ta = textareaRef.current;
@@ -39,6 +42,32 @@ export default function MarkdownToolbar({ textareaRef, content, setContent }) {
     insert(`<mark style="background:${markColor}">`, '</mark>', '高亮文字');
   };
 
+  const insertColor = () => {
+    insert(`<span style="color:${textColor}">`, '</span>', '彩色文字');
+  };
+
+  const ColorBtn = ({ color, onClick, show, setShow, onPick, current, label, colors }) => (
+    <span className="relative flex items-center gap-0">
+      <button type="button" title={label} onClick={onClick}
+        className="px-2 py-1 text-xs hover:bg-gray-100 rounded-l transition-colors font-mono"
+        style={label === '高亮' ? { backgroundColor: color + '40', color: '#374151' } : { color }}>
+        {label === '高亮' ? 'M' : 'A'}
+      </button>
+      <button type="button" onClick={() => setShow(!show)}
+        className="px-0.5 py-1 text-xs text-gray-300 hover:text-gray-500 rounded-r transition-colors">▼</button>
+      {show && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 flex gap-1 z-20"
+          onMouseLeave={() => setShow(false)}>
+          {colors.map(c => (
+            <button key={c} onClick={() => { onPick(c); setShow(false); }}
+              className={`w-4 h-4 rounded-full border hover:scale-110 transition-transform ${c === current ? 'border-gray-900 ring-2 ring-gray-300' : 'border-gray-300'}`}
+              style={{ backgroundColor: c }} />
+          ))}
+        </div>
+      )}
+    </span>
+  );
+
   return (
     <div className="flex flex-wrap gap-0.5 items-center">
       {tools.map(t => (
@@ -48,28 +77,10 @@ export default function MarkdownToolbar({ textareaRef, content, setContent }) {
           {t.label}
         </button>
       ))}
-      {/* M button with current color + picker */}
-      <span className="relative flex items-center gap-0">
-        <button type="button" title="高亮" onClick={insertMark}
-          className="px-2 py-1 text-xs text-gray-500 hover:text-gray-900 rounded-l transition-colors font-mono"
-          style={{ backgroundColor: markColor + '40' }}>
-          M
-        </button>
-        <button type="button" onClick={() => setShowColors(!showColors)}
-          className="px-0.5 py-1 text-xs text-gray-300 hover:text-gray-500 rounded-r transition-colors">
-          ▼
-        </button>
-        {showColors && (
-          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 flex gap-1 z-20"
-            onMouseLeave={() => setShowColors(false)}>
-            {MARK_COLORS.map(c => (
-              <button key={c} onClick={() => { setMarkColor(c); setShowColors(false); }}
-                className={`w-4 h-4 rounded-full border hover:scale-110 transition-transform ${c === markColor ? 'border-gray-900 ring-2 ring-gray-300' : 'border-gray-300'}`}
-                style={{ backgroundColor: c }} />
-            ))}
-          </div>
-        )}
-      </span>
+      <ColorBtn color={markColor} onClick={insertMark} show={showMarkColors} setShow={setShowMarkColors}
+        onPick={setMarkColor} current={markColor} label="高亮" colors={MARK_COLORS} />
+      <ColorBtn color={textColor} onClick={insertColor} show={showTextColors} setShow={setShowTextColors}
+        onPick={setTextColor} current={textColor} label="文字色" colors={TEXT_COLORS} />
     </div>
   );
 }

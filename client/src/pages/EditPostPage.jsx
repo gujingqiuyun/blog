@@ -6,6 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import api from '../api/client';
 import MarkdownToolbar from '../components/MarkdownToolbar';
 import { mdComponents } from '../utils/markdown';
+import { useHistory } from '../utils/useHistory';
 
 export default function EditPostPage() {
   const { id } = useParams();
@@ -13,7 +14,7 @@ export default function EditPostPage() {
   const textareaRef = useRef(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  const [content, setContent] = useState('');
+  const [content, setContent] = useHistory('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);

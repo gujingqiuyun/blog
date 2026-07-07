@@ -23,6 +23,11 @@ export const mdComponents = {
         </SyntaxHighlighter>
       );
     }
+    // Inline code: allow HTML like <span style="..."> to render inside
+    const codeStrInline = String(children);
+    if (inline && /<\w+\b[^>]*style=/.test(codeStrInline)) {
+      return <code className={className} dangerouslySetInnerHTML={{ __html: codeStrInline }} {...props} />;
+    }
     return <code className={className} {...props}>{children}</code>;
   },
 };
